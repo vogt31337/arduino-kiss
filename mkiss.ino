@@ -24,7 +24,7 @@ static RH_RF95 rf95;
 
 // a call-back function which you can adjust into something that
 // peeks in the radio-buffer if anything is waiting
-uint16_t peekRadio() {
+bool peekRadio() {
 	return rf95.available();
 }
 
@@ -68,9 +68,26 @@ bool initRadio() {
 		digitalWrite(pinLedError, LOW);
 		digitalWrite(pinLedHB, LOW);
 
-		rf95.setFrequency(869.525);
-		rf95.setModemConfig(RH_RF95::Bw125Cr48Sf4096);
-		rf95.setTxPower(20); // radiohead default is 13
+#if 1
+                const RH_RF95::ModemConfig cfg = {
+                                // Register 0x1D:
+                                // BW         CR      0=explicit
+                                (8 << 4) | (4 << 1) | (0 << 0),
+                                // Register 0x1E:
+                                // SF       CRC enable
+                                (10 << 4) | (1 << 2),
+                                // Register 0x26:
+                                // bit3 = LowDataRateOptimization
+                                (0 << 3)
+                        };
+                rf95.setModemRegisters(&cfg);
+                rf95.setFrequency(869.850);
+                rf95.setPreambleLength(8);
+#else
+                rf95.setFrequency(869.525);
+                rf95.setModemConfig(RH_RF95::Bw125Cr48Sf4096);
+                rf95.setTxPower(13); // radiohead default is 13
+#endif
 
 		return true;
 	}

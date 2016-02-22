@@ -1,7 +1,13 @@
 // this software is (C) 2016 by folkert@vanheusden.com
 // AGPL v3.0
 
+#ifdef UNITTEST
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#else
 #include <Arduino.h>
+#endif
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -10,7 +16,11 @@
 
 unsigned long int ledOn = 0;
 
+#ifdef UNITTEST
+static const unsigned short crc_flex_table[] = {
+#else
 static const PROGMEM unsigned short crc_flex_table[] = {
+#endif
         0x0f87, 0x1e0e, 0x2c95, 0x3d1c, 0x49a3, 0x582a, 0x6ab1, 0x7b38,
         0x83cf, 0x9246, 0xa0dd, 0xb154, 0xc5eb, 0xd462, 0xe6f9, 0xf770,
         0x1f06, 0x0e8f, 0x3c14, 0x2d9d, 0x5922, 0x48ab, 0x7a30, 0x6bb9,
@@ -50,14 +60,18 @@ void calc_crc_flex(const uint8_t *cp, int size, uint16_t *const crc)
         while (size--) {
 		uint16_t temp = ((*crc >> 8) ^ *cp++) & 0xff;
 
+#ifdef UNITTEST
+                *crc = (*crc << 8) ^ crc_flex_table[temp];
+#else
                 *crc = (*crc << 8) ^ pgm_read_word_near(crc_flex_table + temp);
+#endif
 	}
 }
 
 // note: it allocates 3 * maxPacketSize. so for lora devices that is 762 bytes of ram
 // most arduinos have only 2048 bytes so that is quite a bit
 // there's room for improvement here
-kiss::kiss(const uint16_t maxPacketSizeIn, uint16_t (* peekRadioIn)(), void (* getRadioIn)(uint8_t *const whereTo, uint16_t *const n), void (* putRadioIn)(const uint8_t *const what, const uint16_t size), uint16_t (*peekSerialIn)(), void (* getSerialIn)(uint8_t *const whereTo, const uint16_t n), void (*putSerialIn)(const uint8_t *const what, const uint16_t size), bool (* resetRadioIn)(), const uint8_t recvLedPinIn, const uint8_t sendLedPinIn, const uint8_t errorLedPinIn) : bufferBig(new uint8_t[maxPacketSizeIn * 2]), bufferSmall(new uint8_t[maxPacketSizeIn]), maxPacketSize(maxPacketSizeIn), peekRadio(peekRadioIn), getRadio(getRadioIn), putRadio(putRadioIn), peekSerial(peekSerialIn), getSerial(getSerialIn), putSerial(putSerialIn), resetRadio(resetRadioIn), recvLedPin(recvLedPinIn), sendLedPin(sendLedPinIn), errorLedPin(errorLedPinIn) {
+kiss::kiss(const uint16_t maxPacketSizeIn, bool (* peekRadioIn)(), void (* getRadioIn)(uint8_t *const whereTo, uint16_t *const n), void (* putRadioIn)(const uint8_t *const what, const uint16_t size), uint16_t (*peekSerialIn)(), void (* getSerialIn)(uint8_t *const whereTo, const uint16_t n), void (*putSerialIn)(const uint8_t *const what, const uint16_t size), bool (* resetRadioIn)(), const uint8_t recvLedPinIn, const uint8_t sendLedPinIn, const uint8_t errorLedPinIn) : bufferBig(new uint8_t[maxPacketSizeIn * 2]), bufferSmall(new uint8_t[maxPacketSizeIn]), maxPacketSize(maxPacketSizeIn), peekRadio(peekRadioIn), getRadio(getRadioIn), putRadio(putRadioIn), peekSerial(peekSerialIn), getSerial(getSerialIn), putSerial(putSerialIn), resetRadio(resetRadioIn), recvLedPin(recvLedPinIn), sendLedPin(sendLedPinIn), errorLedPin(errorLedPinIn) {
 	debug("START");
 }
 
@@ -94,8 +108,12 @@ void put_byte(uint8_t *const out, uint16_t *const offset, const uint8_t c)
 
 void kiss::setError() {
 	if (errorLedPin != 0xff) {
+#ifdef UNITTEST
+		printf("setError\n");
+#else
 		digitalWrite(errorLedPin, HIGH);
 		ledOn = millis();
+#endif
 	}
 }
 
@@ -104,6 +122,10 @@ void kiss::setError() {
 // it sends some text packaged as a kiss-packet via
 // the serial port to the linux system
 void kiss::debug(const char *const t) {
+#if 0
+#ifdef UNITTEST
+	printf("DEBUG: %s\n", t);
+#else
         uint16_t crc = 0xffff;
 	strcpy((char *)bufferSmall, t);
 	int nBytes = strlen((char *)bufferSmall);
@@ -125,24 +147,28 @@ void kiss::debug(const char *const t) {
 	bufferBig[o++] = FEND;
 
 	putSerial(bufferBig, o);
+#endif
+#endif
 }
 
-void kiss::processRadio(const uint16_t nBytes) {
+void kiss::processRadio() {
 	if (recvLedPin != 0xff) {
+#ifndef UNITTEST
 		digitalWrite(recvLedPin, HIGH);
 		ledOn = millis();
+#endif
 	}
 
-	if (nBytes > maxPacketSize * 2) {
-		debug("error packet size");
-		setError();
-		return;
-	}
+	uint16_t nBytes = maxPacketSize;
+	getRadio(bufferSmall, &nBytes);
 
 	debug("recv radio");
-
-	uint16_t temp = nBytes;
-	getRadio(bufferSmall, &temp);
+#define hex(x) ((x) >= 10 ? (x) - 10 + 'a' : (x) + '0')
+        char buffer[3];
+	buffer[0] = hex(nBytes >> 4);
+	buffer[1] = hex(nBytes & 15);
+	buffer[2] = 0x00;
+        debug(buffer);
 
         uint16_t crc = 0xffff;
 
@@ -170,16 +196,23 @@ void kiss::processRadio(const uint16_t nBytes) {
 // 2 seconds
 void kiss::processSerial() {
 	if (sendLedPin != 0xff) {
+#ifndef UNITTEST
 		digitalWrite(sendLedPin, HIGH);
 		ledOn = millis();
+#endif
 	}
 
 	bool first = true, ok = false, escape = false;
 
 	uint16_t o = 0;
 
+#ifdef UNITTEST
+	const time_t end = time(NULL) + 3;
+	for(;time(NULL) < end;)
+#else
 	const unsigned long int end = millis() + 2000;
 	for(;millis() < end;)
+#endif
 	{
 		uint8_t buffer = 0;
 
@@ -280,12 +313,14 @@ void kiss::processSerial() {
 			if (!resetRadio()) {
 				debug("Reset radio failed");
 
+#ifndef UNITTEST
 				for(byte i=0; i<3; i++) {
 					digitalWrite(errorLedPin, HIGH);
 					delay(250);
 					digitalWrite(errorLedPin, LOW);
 					delay(250);
 				}
+#endif
 			}
 		}
 		else
@@ -298,14 +333,14 @@ void kiss::processSerial() {
 }
 
 void kiss::loop() {
-	uint16_t nRadioIn = peekRadio();
-	if (nRadioIn)
-		processRadio(nRadioIn);
+	if (peekRadio())
+		processRadio();
 
 	bool serialIn = peekSerial();
 	if (serialIn)
 		processSerial();
 
+#ifndef UNITTEST
 	const unsigned long int now = millis();
 	if (ledOn && now - ledOn > 100) {
 		digitalWrite(errorLedPin, LOW);
@@ -313,4 +348,71 @@ void kiss::loop() {
 		digitalWrite(sendLedPin, LOW);
 		ledOn = 0;
 	}
+#endif
 }
+
+#ifdef UNITTEST
+const char radioStr[] = "Dit is een test.";
+uint16_t peekRadio() {
+	static bool state = true;
+	int rc = state ? strlen(radioStr) : 0;
+	state = false;
+	return rc;
+}
+
+void getRadio(uint8_t *const whereTo, uint16_t *const n) {
+	if (*n != strlen(radioStr))
+		printf("getRadio: wrong number (get: %d, have: %d)\n", *n, strlen(radioStr));
+	memcpy(whereTo, radioStr, *n);
+}
+
+void putRadio(const uint8_t *const what, const uint16_t size) {
+	printf("put radio: ");
+	for(int i=0; i<size; i++)
+		printf("%c [%02x] ", what[i] > 32 && what[i] < 127 ? what[i] : '.', what[i]);
+	printf("\n");
+}
+
+static int offset = 0;
+const uint8_t serialData[] = { 0xc0, 0x20, 0x44, 0x69, 0x74, 0x20, 0x69, 0x73, 0x20, 0x65, 0x65, 0x6e, 0x20, 0x74, 0x65, 0x73, 0x74, 0x2e, 0x48, 0xc1, 0xc0 };
+uint16_t peekSerial() {
+	return sizeof serialData - offset;
+}
+
+void getSerial(uint8_t *const whereTo, const uint16_t n) {
+	if (offset > sizeof serialData)
+		printf("getSerial: overflwo\n");
+
+	memcpy(whereTo, &serialData[offset], n);
+	offset += n;
+}
+
+void putSerial(const uint8_t *const what, const uint16_t size) {
+	printf("put serial: ");
+	for(int i=0; i<size; i++)
+		printf("%c [%02x] ", what[i] > 32 && what[i] < 127 ? what[i] : '.', what[i]);
+	printf("\n");
+}
+
+bool resetRadio() {
+	printf("resetRadio\n");
+
+	return true;
+}
+
+int main(int argc, char *argv[])
+{
+	kiss *k = new kiss(254, peekRadio, getRadio, putRadio, peekSerial, getSerial, putSerial, resetRadio, 1, 2, 3);
+	k -> begin();
+
+	for(int i=0; i<5; i++) {
+		printf("hb\n");
+		k -> loop();
+		usleep(251000);
+	}
+
+	delete k;
+
+	return 0;
+}
+#endif
