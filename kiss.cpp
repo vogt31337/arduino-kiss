@@ -122,32 +122,40 @@ void kiss::setError() {
 // it sends some text packaged as a kiss-packet via
 // the serial port to the linux system
 void kiss::debug(const char *const t) {
-#if 0
 #ifdef UNITTEST
 	printf("DEBUG: %s\n", t);
 #else
+	uint8_t myBuffer[128];
+	const uint8_t ax25_ident[] = { 0x92, 0x88, 0x8a, 0x9c, 0xa8, 0x40, 0xe0, 0x88, 0x8a, 0x84, 0xaa, 0x8e, 0x60, 0x63, 0x03, 0xf0 };
+
         uint16_t crc = 0xffff;
-	strcpy((char *)bufferSmall, t);
-	int nBytes = strlen((char *)bufferSmall);
 
 	uint16_t o = 0;
-	bufferBig[o++] = FEND;
+	myBuffer[o++] = 0x20; // FLEXNET
 
-	bufferBig[o] = 0x20; // FLEXNET
-	calc_crc_flex(&bufferBig[o++], 1, &crc);
+	for(uint8_t i=0; i<sizeof(ax25_ident); i++)
+		myBuffer[o++] = ax25_ident[i];
 
-	calc_crc_flex(bufferSmall, nBytes, &crc);
+	uint8_t l = strlen(t);
+	for(uint8_t i=0; i<l; i++)
+		myBuffer[o++] = t[i];
 
-	for(uint16_t i=0; i<nBytes; i++)
-		put_byte(bufferBig, &o, bufferSmall[i]);
+	calc_crc_flex(myBuffer, o, &crc);
 
-	put_byte(bufferBig, &o, crc >> 8);
-	put_byte(bufferBig, &o, crc & 0xff);
+	myBuffer[o++] = crc >> 8;
+	myBuffer[o++] = crc & 0xff;
 
-	bufferBig[o++] = FEND;
+	const uint8_t fend = FEND;
+	putSerial(&fend, 1);
 
-	putSerial(bufferBig, o);
-#endif
+	for(uint8_t i=0; i<o; i++) {
+		uint8_t tinyBuffer[4];
+		uint16_t oo = 0;
+		put_byte(tinyBuffer, &oo, myBuffer[i]);
+		putSerial(tinyBuffer, oo);
+	}
+
+	putSerial(&fend, 1);
 #endif
 }
 
@@ -162,13 +170,9 @@ void kiss::processRadio() {
 	uint16_t nBytes = maxPacketSize;
 	getRadio(bufferSmall, &nBytes);
 
-	debug("recv radio");
-#define hex(x) ((x) >= 10 ? (x) - 10 + 'a' : (x) + '0')
-        char buffer[3];
-	buffer[0] = hex(nBytes >> 4);
-	buffer[1] = hex(nBytes & 15);
-	buffer[2] = 0x00;
-        debug(buffer);
+	char buf[20];
+	snprintf(buf, sizeof buf, "recv radio %d", nBytes);
+        debug(buf);
 
         uint16_t crc = 0xffff;
 
@@ -290,6 +294,7 @@ void kiss::processSerial() {
 			if (bufferSmall[0]) {
 				if (o < 3) {
 					debug("error < 3");
+					ok = false;
 					setError();
 				}
 				else {
@@ -299,6 +304,7 @@ void kiss::processSerial() {
 			else {
 				if (o < 1) {
 					debug("error < 1");
+					ok = false;
 					setError();
 				}
 				else {
@@ -312,6 +318,7 @@ void kiss::processSerial() {
 		else if ((bufferSmall[0] & 0x0f) == 0x0f) {
 			if (!resetRadio()) {
 				debug("Reset radio failed");
+				ok = false;
 
 #ifndef UNITTEST
 				for(byte i=0; i<3; i++) {
@@ -328,8 +335,22 @@ void kiss::processSerial() {
 			char err[64];
 			snprintf(err, sizeof err, "frame type %02x unk", bufferSmall[0]);
 			debug(err);
+			ok = false;
 		}
 	}
+
+
+	static uint16_t cnt = 0;
+	char buf[16];
+
+	if (ok)
+		snprintf(buf, sizeof buf, "OK %d", ++cnt);
+	else
+		snprintf(buf, sizeof buf, "FAIL %d", ++cnt);
+
+	buf[sizeof(buf) - 1] = 0x00;
+
+	debug(buf);
 }
 
 void kiss::loop() {
@@ -402,16 +423,14 @@ bool resetRadio() {
 
 int main(int argc, char *argv[])
 {
-	kiss *k = new kiss(254, peekRadio, getRadio, putRadio, peekSerial, getSerial, putSerial, resetRadio, 1, 2, 3);
-	k -> begin();
+	kiss k(254, peekRadio, getRadio, putRadio, peekSerial, getSerial, putSerial, resetRadio, 1, 2, 3);
+	k.begin();
 
 	for(int i=0; i<5; i++) {
 		printf("hb\n");
-		k -> loop();
+		k.loop();
 		usleep(251000);
 	}
-
-	delete k;
 
 	return 0;
 }
