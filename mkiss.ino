@@ -46,13 +46,17 @@ uint16_t peekSerial() {
 	return Serial.available();
 }
 
-void getSerial(uint8_t *const whereTo, const uint16_t n) {
+bool getSerial(uint8_t *const whereTo, const uint16_t n, const unsigned long int to) {
 	for(uint16_t i=0; i<n; i++) {
 		while(!Serial.available()) {
+			if (millis() >= to)
+				return false;
 		}
 
 		whereTo[i] = Serial.read();
 	}
+
+	return true;
 }
 
 void putSerial(const uint8_t *const what, const uint16_t size) {

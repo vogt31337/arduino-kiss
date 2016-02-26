@@ -71,7 +71,7 @@ void calc_crc_flex(const uint8_t *cp, int size, uint16_t *const crc)
 // note: it allocates 3 * maxPacketSize. so for lora devices that is 762 bytes of ram
 // most arduinos have only 2048 bytes so that is quite a bit
 // there's room for improvement here
-kiss::kiss(const uint16_t maxPacketSizeIn, bool (* peekRadioIn)(), void (* getRadioIn)(uint8_t *const whereTo, uint16_t *const n), void (* putRadioIn)(const uint8_t *const what, const uint16_t size), uint16_t (*peekSerialIn)(), void (* getSerialIn)(uint8_t *const whereTo, const uint16_t n), void (*putSerialIn)(const uint8_t *const what, const uint16_t size), bool (* resetRadioIn)(), const uint8_t recvLedPinIn, const uint8_t sendLedPinIn, const uint8_t errorLedPinIn) : bufferBig(new uint8_t[maxPacketSizeIn * 2]), bufferSmall(new uint8_t[maxPacketSizeIn]), maxPacketSize(maxPacketSizeIn), peekRadio(peekRadioIn), getRadio(getRadioIn), putRadio(putRadioIn), peekSerial(peekSerialIn), getSerial(getSerialIn), putSerial(putSerialIn), resetRadio(resetRadioIn), recvLedPin(recvLedPinIn), sendLedPin(sendLedPinIn), errorLedPin(errorLedPinIn) {
+kiss::kiss(const uint16_t maxPacketSizeIn, bool (* peekRadioIn)(), void (* getRadioIn)(uint8_t *const whereTo, uint16_t *const n), void (* putRadioIn)(const uint8_t *const what, const uint16_t size), uint16_t (*peekSerialIn)(), bool (* getSerialIn)(uint8_t *const whereTo, const uint16_t n, const unsigned long int to), void (*putSerialIn)(const uint8_t *const what, const uint16_t size), bool (* resetRadioIn)(), const uint8_t recvLedPinIn, const uint8_t sendLedPinIn, const uint8_t errorLedPinIn) : bufferBig(new uint8_t[maxPacketSizeIn * 2]), bufferSmall(new uint8_t[maxPacketSizeIn]), maxPacketSize(maxPacketSizeIn), peekRadio(peekRadioIn), getRadio(getRadioIn), putRadio(putRadioIn), peekSerial(peekSerialIn), getSerial(getSerialIn), putSerial(putSerialIn), resetRadio(resetRadioIn), recvLedPin(recvLedPinIn), sendLedPin(sendLedPinIn), errorLedPin(errorLedPinIn) {
 	debug("START");
 }
 
@@ -220,7 +220,11 @@ void kiss::processSerial() {
 	{
 		uint8_t buffer = 0;
 
-		getSerial(&buffer, 1);
+		if (!getSerial(&buffer, 1, end)) {
+			debug("ser recv to");
+			setError();
+			break;
+		}
 
 		if (escape)
 		{
@@ -400,7 +404,7 @@ uint16_t peekSerial() {
 	return sizeof serialData - offset;
 }
 
-void getSerial(uint8_t *const whereTo, const uint16_t n) {
+void getSerial(uint8_t *const whereTo, const uint16_t n, const unsigned long int to) {
 	if (offset > sizeof serialData)
 		printf("getSerial: overflwo\n");
 
