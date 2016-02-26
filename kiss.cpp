@@ -214,7 +214,7 @@ void kiss::processSerial() {
 	const time_t end = time(NULL) + 3;
 	for(;time(NULL) < end;)
 #else
-	const unsigned long int end = millis() + 2000;
+	const unsigned long int end = millis() + 5000;
 	for(;millis() < end;)
 #endif
 	{
@@ -247,8 +247,14 @@ void kiss::processSerial() {
 		}
 		else if (buffer == FEND)
 		{
-			if (first)
+			if (first) {
 				first = false;
+
+				if (o) {
+					debug("ign garbage");
+					o = 0;
+				}
+			}
 			else
 			{
 				ok = true;
