@@ -1,10 +1,7 @@
-// this software is (C) 2016 by folkert@vanheusden.com
-// AGPL v3.0
-
 #include "kiss.h"
-
-#include <SPI.h>
-#include <RH_RF95.h> // LoRa device
+#include <Arduino.h>
+#include <ccpacket.h>
+#include <cc1101.h> // CC1101 device
 
 // as debugging via serial is not possible (it is used for the kiss
 // protocol), I use a couple of LEDs
@@ -12,12 +9,21 @@
 #define pinLedRecv 4
 #define pinLedSend 5
 #define pinLedHB 6
-#define pinReset 7
+#define CC1101_GDO0 2
 
-// this is an example implementation using a "RadioHead"-driver for
-// RF95 radio (a LoRa device).
-// RadioHead: https://github.com/PaulStoffregen/RadioHead.git
-static RH_RF95 rf95;
+// this is an example implementation using a "PanStamp"-driver for
+// CC1101 radio.
+// PanStamp: https://github.com/panStamp/arduino_avr.git
+// Port to arduino: https://github.com/veonik/arduino-cc1101.git
+CC1101 cc1101;
+bool packetAvailable = false;
+byte syncWord[2] = {199, 10};
+
+/* Handle interrupt from CC1101 (INT0) gdo0 on pin2 */
+void cc1101signalsInterrupt(void){
+// set the flag that a package is available
+  packetAvailable = true;
+}
 
 // the 'kiss'-class requires a couple of callback functions. these
 // functions do the low-level work so that the kiss-class is generic
@@ -25,19 +31,43 @@ static RH_RF95 rf95;
 // a call-back function which you can adjust into something that
 // peeks in the radio-buffer if anything is waiting
 bool peekRadio() {
-	return rf95.available();
+	return packetAvailable;
 }
 
 // if there's data in your radio, then this callback should retrieve it
 void getRadio(uint8_t *const whereTo, uint16_t *const n) {
-	uint8_t dummy = *n;
-	rf95.recv(whereTo, &dummy);
-	*n = dummy;
+//	uint8_t dummy = *n;
+//	rf95.recv(whereTo, &dummy);
+//	*n = dummy;
+  detachInterrupt(cc1101signalsInterrupt);
+  CCPACKET packet;
+  if (cc1101.receiveData(&packet) > 0) {
+    if(packet.crc_ok) {
+      *n = packet.length;
+      memcpy(whereTo, packet.data, packet.length);
+    }
+//    else {
+//      k.debug("crc not ok!");
+//  }
+  }
+  packetAvailable = false;
+  attachInterrupt(CC1101_GDO0, cc1101signalsInterrupt, FALLING);
 }
 
 void putRadio(const uint8_t *const what, const uint16_t size) {
-	rf95.send(what, size);
-	rf95.waitPacketSent();
+  detachInterrupt(cc1101signalsInterrupt);
+  CCPACKET packet;
+  packet.length = size + 3; // some room for special chars: crc, ...
+  memcpy(packet.data, what, size);
+
+  if (cc1101.sendData(packet)) {
+//    k.debug("sent ok.");
+//  } else {
+//    k.debug("sent failed.");
+  }
+//	rf95.send(what, size);
+//	rf95.waitPacketSent();
+  attachInterrupt(CC1101_GDO0, cc1101signalsInterrupt, FALLING);
 }
 
 // some arduino-platforms (teensy, mega) have multiple serial ports
@@ -64,7 +94,7 @@ void putSerial(const uint8_t *const what, const uint16_t size) {
 }
 
 bool initRadio() {
-	if (rf95.init()) {
+	cc1101.init();
 		delay(100);
 
 		digitalWrite(pinLedRecv, LOW);
@@ -72,49 +102,30 @@ bool initRadio() {
 		digitalWrite(pinLedError, LOW);
 		digitalWrite(pinLedHB, LOW);
 
-#if 1
-                const RH_RF95::ModemConfig cfg = {
-                                // Register 0x1D:
-                                // BW         CR      0=explicit
-                                (8 << 4) | (4 << 1) | (0 << 0),
-                                // Register 0x1E:
-                                // SF       CRC enable
-                                (10 << 4) | (1 << 2),
-                                // Register 0x26:
-                                // bit3 = LowDataRateOptimization
-                                (0 << 3)
-                        };
-                rf95.setModemRegisters(&cfg);
-                rf95.setFrequency(869.850);
-                rf95.setPreambleLength(8);
-#else
-                rf95.setFrequency(869.525);
-                rf95.setModemConfig(RH_RF95::Bw125Cr48Sf4096);
-                rf95.setTxPower(13); // radiohead default is 13
-#endif
+    cc1101.setSyncWord(syncWord);
+    cc1101.setCarrierFreq(CFREQ_433);
+    cc1101.disableAddressCheck();
+    cc1101.setChannel(0);
+    cc1101.setTxPowerAmp(PA_LongDistance);
 
 		return true;
-	}
-
-	return false;
 }
 
 bool resetRadio() {
-	digitalWrite(pinReset, LOW);
-	delay(1); // at least 100us, this is 1000us
-	digitalWrite(pinReset, HIGH);
-	delay(5 + 1); // 5ms is required
+	cc1101.reset();
+	delay(5); // 5ms is required
 
 	return initRadio();
 }
 
-// LoRa device can have a packetsize of 254 bytes
-kiss k(254, peekRadio, getRadio, putRadio, peekSerial, getSerial, putSerial, resetRadio, pinLedRecv, pinLedSend, pinLedError);
+// CC1101 device can have a packetsize of CCPACKET_BUFFER_LEN (64) bytes
+kiss k(CCPACKET_BUFFER_LEN, peekRadio, getRadio, putRadio, peekSerial, getSerial, putSerial, resetRadio, pinLedRecv, pinLedSend, pinLedError);
 
 void setup() {
 	// the arduino talks with 9600bps to the linux system
 	Serial.begin(9600);
-
+  attachInterrupt(CC1101_GDO0, cc1101signalsInterrupt, FALLING);
+  
 	pinMode(pinLedRecv, OUTPUT);
 	digitalWrite(pinLedRecv, HIGH);
 	pinMode(pinLedSend, OUTPUT);
@@ -123,9 +134,6 @@ void setup() {
 	digitalWrite(pinLedError, HIGH);
 	pinMode(pinLedHB, OUTPUT);
 	digitalWrite(pinLedHB, HIGH);
-
-	pinMode(pinReset, OUTPUT);
-	digitalWrite(pinReset, HIGH);
 
 	k.begin();
 
