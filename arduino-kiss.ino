@@ -8,7 +8,7 @@
 #define pinLedError 3
 #define pinLedRecv 4
 #define pinLedSend 5
-#define pinLedHB 6
+#define pinLedHB 17
 #define CC1101_GDO0 2
 
 // this is an example implementation using a "PanStamp"-driver for
@@ -44,7 +44,10 @@ void getRadio(uint8_t *const whereTo, uint16_t *const n) {
   if (cc1101.receiveData(&packet) > 0) {
     if(packet.crc_ok) {
       *n = packet.length;
-      memcpy(whereTo, packet.data, packet.length);
+//      memcpy(whereTo, packet.data, packet.length);
+      for(uint8_t i=0; i<packet.length; i++) {
+        whereTo[i] = packet.data[i];
+      }
     }
 //    else {
 //      k.debug("crc not ok!");
@@ -58,7 +61,10 @@ void putRadio(const uint8_t *const what, const uint16_t size) {
   detachInterrupt(cc1101signalsInterrupt);
   CCPACKET packet;
   packet.length = size + 3; // some room for special chars: crc, ...
-  memcpy(packet.data, what, size);
+//  memcpy(packet.data, what, size);
+  for(uint8_t i=0; i<size; i++) {
+    packet.data[i] = what[i];
+  }
 
   if (cc1101.sendData(packet)) {
 //    k.debug("sent ok.");
@@ -95,20 +101,20 @@ void putSerial(const uint8_t *const what, const uint16_t size) {
 
 bool initRadio() {
 	cc1101.init();
-		delay(100);
+	delay(100);
 
-		digitalWrite(pinLedRecv, LOW);
-		digitalWrite(pinLedSend, LOW);
-		digitalWrite(pinLedError, LOW);
-		digitalWrite(pinLedHB, LOW);
+	digitalWrite(pinLedRecv, LOW);
+	digitalWrite(pinLedSend, LOW);
+	digitalWrite(pinLedError, LOW);
+	digitalWrite(pinLedHB, LOW);
 
-    cc1101.setSyncWord(syncWord);
-    cc1101.setCarrierFreq(CFREQ_433);
-    cc1101.disableAddressCheck();
-    cc1101.setChannel(0);
-    cc1101.setTxPowerAmp(PA_LongDistance);
+  cc1101.setSyncWord(syncWord);
+  cc1101.setCarrierFreq(CFREQ_433);
+  cc1101.disableAddressCheck();
+  cc1101.setChannel(0);
+  cc1101.setTxPowerAmp(PA_LongDistance);
 
-		return true;
+	return true;
 }
 
 bool resetRadio() {
