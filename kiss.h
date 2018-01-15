@@ -23,7 +23,18 @@ private:
 	void setError();
 
 public:
-	kiss(const uint16_t maxPacketSize, bool (* peekRadio)(), void (* getRadio)(uint8_t *const whereTo, uint16_t *const n), void (* putRadio)(const uint8_t *const what, const uint16_t size), uint16_t (*peekSerialIn)(), bool (* getSerialIn)(uint8_t *const whereTo, const uint16_t n, const unsigned long int to), void (*putSerialIn)(const uint8_t *const what, const uint16_t size), bool (* resetRadioIn)(), const uint8_t recvLedPin, const uint8_t sendLedPin, const uint8_t errorLedPin);
+	kiss(const uint16_t maxPacketSize, 
+	     bool (* peekRadio)(), 
+	     void (* getRadio)(uint8_t *const whereTo, uint16_t *const n), 
+	     void (* putRadio)(const uint8_t *const what, const uint16_t size), 
+	     uint16_t (*peekSerialIn)(), 
+	     bool (* getSerialIn)(uint8_t *const whereTo, const uint16_t n, const unsigned long int to), 
+	     void (*putSerialIn)(const uint8_t *const what, const uint16_t size), 
+	     bool (* resetRadioIn)(), 
+	     const uint8_t recvLedPin, 
+	     const uint8_t sendLedPin, 
+	     const uint8_t errorLedPin);
+       
 	~kiss();
 
 	void debug(const char *const t);

@@ -1,7 +1,7 @@
-#include "kiss.h"
 #include <Arduino.h>
-#include <ccpacket.h>
-#include <cc1101.h> // CC1101 device
+#include "cc1101.h" // CC1101 device
+#include "ccpacket.h"
+#include "kiss.h"
 
 // as debugging via serial is not possible (it is used for the kiss
 // protocol), I use a couple of LEDs
@@ -9,20 +9,34 @@
 #define pinLedRecv 4
 #define pinLedSend 5
 #define pinLedHB 17
+
+#define CC1101Interrupt 0
 #define CC1101_GDO0 2
 
 // this is an example implementation using a "PanStamp"-driver for
 // CC1101 radio.
 // PanStamp: https://github.com/panStamp/arduino_avr.git
 // Port to arduino: https://github.com/veonik/arduino-cc1101.git
-CC1101 cc1101;
+CC1101 radio;
 bool packetAvailable = false;
 byte syncWord[2] = {199, 10};
+
+#define FILTER_LENGTH 4
+word freq_reg = 0;
+byte freqOffset = 0;
+
+byte updateFreqOffset(byte input) {
+  if (abs(input - freqOffset) < 50) {
+    freq_reg = freq_reg - (freq_reg >> FILTER_LENGTH) + input;
+  }
+  return freq_reg >> FILTER_LENGTH;
+}
 
 /* Handle interrupt from CC1101 (INT0) gdo0 on pin2 */
 void cc1101signalsInterrupt(void){
 // set the flag that a package is available
   packetAvailable = true;
+  freqOffset = updateFreqOffset(radio.readReg(CC1101_FREQEST, CC1101_STATUS_REGISTER));
 }
 
 // the 'kiss'-class requires a couple of callback functions. these
@@ -41,7 +55,7 @@ void getRadio(uint8_t *const whereTo, uint16_t *const n) {
 //	*n = dummy;
   detachInterrupt(cc1101signalsInterrupt);
   CCPACKET packet;
-  if (cc1101.receiveData(&packet) > 0) {
+  if (radio.receiveData(&packet) > 0) {
     if(packet.crc_ok) {
       *n = packet.length;
 //      memcpy(whereTo, packet.data, packet.length);
@@ -66,7 +80,7 @@ void putRadio(const uint8_t *const what, const uint16_t size) {
     packet.data[i] = what[i];
   }
 
-  if (cc1101.sendData(packet)) {
+  if (radio.sendData(packet)) {
 //    k.debug("sent ok.");
 //  } else {
 //    k.debug("sent failed.");
@@ -100,7 +114,7 @@ void putSerial(const uint8_t *const what, const uint16_t size) {
 }
 
 bool initRadio() {
-	cc1101.init();
+	radio.init();
 	delay(100);
 
 	digitalWrite(pinLedRecv, LOW);
@@ -108,17 +122,19 @@ bool initRadio() {
 	digitalWrite(pinLedError, LOW);
 	digitalWrite(pinLedHB, LOW);
 
-  cc1101.setSyncWord(syncWord);
-  cc1101.setCarrierFreq(CFREQ_433);
-  cc1101.disableAddressCheck();
-  cc1101.setChannel(0);
-  cc1101.setTxPowerAmp(PA_LongDistance);
+  radio.setSyncWord(syncWord);
+  radio.setCarrierFreq(CFREQ_433);
+  radio.disableAddressCheck();
+//  radio.setChannel(0);
+  radio.setTxPowerAmp(PA_LongDistance);
+  radio.writeReg(CC1101_FSCTRL0, freqOffset);
 
+  putSerial("Radio init!", 11);
 	return true;
 }
 
 bool resetRadio() {
-	cc1101.reset();
+	radio.reset();
 	delay(5); // 5ms is required
 
 	return initRadio();
@@ -129,7 +145,7 @@ kiss k(CCPACKET_BUFFER_LEN, peekRadio, getRadio, putRadio, peekSerial, getSerial
 
 void setup() {
 	// the arduino talks with 9600bps to the linux system
-	Serial.begin(9600);
+	Serial.begin(115200);
   attachInterrupt(CC1101_GDO0, cc1101signalsInterrupt, FALLING);
   
 	pinMode(pinLedRecv, OUTPUT);
@@ -143,7 +159,7 @@ void setup() {
 
 	k.begin();
 
-	if (!resetRadio())
+	if (!initRadio())
 		k.debug("Radio init failed");
 
 	k.debug("Go!");
