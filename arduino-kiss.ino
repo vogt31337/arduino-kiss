@@ -51,6 +51,7 @@ void getRadio() {
         Serial.write(packet.data[i]);
       }
       Serial.write(FEND);
+      Serial.flush();
     }
   }
   packetAvailable = false;
@@ -73,7 +74,6 @@ bool initRadio() {
   radio.setTxPowerAmp(PA_LongDistance);
   radio.writeReg(CC1101_FSCTRL0, freqOffset);
 
-  putSerial("Radio init!", 11);
 	return true;
 }
 
@@ -98,7 +98,13 @@ void setup() {
 	pinMode(pinLedHB, OUTPUT);
 	digitalWrite(pinLedHB, HIGH);
 
-  initRadio()
+  initRadio();
+}
+
+void fill(CCPACKET packet, char ch) {
+  for(byte i = packet.length; i < 62; i++) {
+    packet.data[i] = ch;
+  }
 }
 
 void loop() {
@@ -116,15 +122,15 @@ void loop() {
   if(Serial.available() >= 64) {
     CCPACKET packet;
     packet.length = 0;
-    while(paket.length < 62) {
-      Char ch = Serial.read();
-      // Should ignore FEND chars and the modem number.
-      if (ch != FEND || (ch != 0x00 && packet.length != 0)) {
-        packet.data[packet.length] = ch;
-        packet.length++;
+    char ch = Serial.read();
+    if (ch == FEND) {
+      ch = Serial.read();
+      if (ch == 0x00) {
+        byte bytes = Serial.readBytesUntil(FEND, packet.data, 62);
+        packet.length = bytes;
+        fill(packet, 0x00);
       }
-    }
-
+    }      
     radio.sendData(packet);
   }
 
