@@ -105,14 +105,14 @@ void CC1101::writeReg(byte regAddr, byte value)
  * Return:
  *  If program should wait.
  */
-bool CC1101::checkStatusByte(byte statusByte)
+/*bool CC1101::checkStatusByte(byte statusByte)
 {
   if ((statusByte & 0x07) <= 1) {
     return true;
   } else {
     return false;
   }
-}
+}*/
 
 /**
  * writeBurstReg
@@ -125,7 +125,7 @@ bool CC1101::checkStatusByte(byte statusByte)
  */
 void CC1101::writeBurstReg(byte regAddr, byte* buffer, byte len)
 {
-  byte addr, i, rcx;
+  byte addr, i;
   
   addr = regAddr | WRITE_BURST;         // Enable burst transfer
   cc1101_Select();                      // Select CC1101
@@ -133,8 +133,7 @@ void CC1101::writeBurstReg(byte regAddr, byte* buffer, byte len)
   SPI.transfer(addr);                   // Send register address
 
   for(i=0 ; i<len ; i++) {
-    rcx = SPI.transfer(buffer[i]);      // Send value
-    checkStatusByte(rcx);
+    SPI.transfer(buffer[i]);      // Send value
   }
 
   cc1101_Deselect();                    // Deselect CC1101  
@@ -464,7 +463,8 @@ bool CC1101::sendData(CCPACKET packet)
   if (packet.length > 0)
   {
     // Set data length at the first position of the TX FIFO
-    writeReg(CC1101_TXFIFO, packet.length);
+//TODO: we changed to fixed packet length. Maybe add a compile switch.
+//    writeReg(CC1101_TXFIFO, packet.length);
     // Write data into the TX FIFO
     writeBurstReg(CC1101_TXFIFO, packet.data, packet.length);
 

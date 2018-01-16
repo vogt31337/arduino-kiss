@@ -30,7 +30,7 @@
  * Buffer and data lengths
  */
 #define CCPACKET_BUFFER_LEN        64
-#define CCPACKET_DATA_LEN          CCPACKET_BUFFER_LEN - 3
+#define CCPACKET_DATA_LEN          CCPACKET_BUFFER_LEN - 2
 
 /**
  * Class: CCPACKET
@@ -44,7 +44,7 @@ struct CCPACKET
     /**
      * Data length
      */
-    unsigned char length;
+    unsigned char length = CCPACKET_DATA_LEN;
 
     /**
      * Data buffer

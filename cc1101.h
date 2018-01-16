@@ -217,7 +217,7 @@ enum RFSTATE
 #define CC1101_DEFVAL_FIFOTHR    0x07        // RX FIFO and TX FIFO Thresholds
 #define CC1101_DEFVAL_SYNC1      0xB5        // Synchronization word, high byte
 #define CC1101_DEFVAL_SYNC0      0x47        // Synchronization word, low byte
-#define CC1101_DEFVAL_PKTLEN     0x3D        // Packet Length
+#define CC1101_DEFVAL_PKTLEN     0x3E        // Packet Length = 62
 #define CC1101_DEFVAL_PKTCTRL1   0x04        // Packet Automation Control
 #define CC1101_DEFVAL_PKTCTRL0   0x44        // Packet Automation Control
 #define CC1101_DEFVAL_ADDR       0x00        // Device Address
