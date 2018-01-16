@@ -90,6 +90,31 @@ void CC1101::writeReg(byte regAddr, byte value)
 }
 
 /**
+ * checkStatusByte
+ * 
+ * CC1101 will transmit a status byte when a header, 
+ * data or a command strobe is sent via SPI. Also when
+ * filling the TX Fifo it will be output on the SO pin.
+ * (Check datasheet section 10.1 and 10.5)
+ * 
+ * 'statusBtye' is the received byte:
+ *   7: CHIP_RDY
+ * 6:4: STATE
+ * 3:0: FIFO_BYTES_AVAILABLE
+ * 
+ * Return:
+ *  If program should wait.
+ */
+bool CC1101::checkStatusByte(byte statusByte)
+{
+  if ((statusByte & 0x07) <= 1) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+/**
  * writeBurstReg
  * 
  * Write multiple registers into the CC1101 IC via SPI
@@ -100,15 +125,17 @@ void CC1101::writeReg(byte regAddr, byte value)
  */
 void CC1101::writeBurstReg(byte regAddr, byte* buffer, byte len)
 {
-  byte addr, i;
+  byte addr, i, rcx;
   
   addr = regAddr | WRITE_BURST;         // Enable burst transfer
   cc1101_Select();                      // Select CC1101
   wait_Miso();                          // Wait until MISO goes low
   SPI.transfer(addr);                   // Send register address
-  
-  for(i=0 ; i<len ; i++)
-    SPI.transfer(buffer[i]);            // Send value
+
+  for(i=0 ; i<len ; i++) {
+    rcx = SPI.transfer(buffer[i]);      // Send value
+    checkStatusByte(rcx);
+  }
 
   cc1101_Deselect();                    // Deselect CC1101  
 }
@@ -437,7 +464,7 @@ bool CC1101::sendData(CCPACKET packet)
   if (packet.length > 0)
   {
     // Set data length at the first position of the TX FIFO
-    writeReg(CC1101_TXFIFO,  packet.length);
+    writeReg(CC1101_TXFIFO, packet.length);
     // Write data into the TX FIFO
     writeBurstReg(CC1101_TXFIFO, packet.data, packet.length);
 
