@@ -187,7 +187,7 @@ enum RFSTATE
  * Modulated = true 
  * Modulation format = GFSK 
  * Manchester enable = false
- * Data whitening = off
+ * Data whitening = on
  * Sync word qualifier mode = 30/32 sync word bits detected 
  * Preamble count = 4 
  * Channel spacing = 199.951172 
@@ -218,9 +218,9 @@ enum RFSTATE
 #define CC1101_DEFVAL_SYNC1      0xB5        // Synchronization word, high byte
 #define CC1101_DEFVAL_SYNC0      0x47        // Synchronization word, low byte
 #define CC1101_DEFVAL_PKTLEN     0x3D        // Packet Length
-#define CC1101_DEFVAL_PKTCTRL1   0x06        // Packet Automation Control
-#define CC1101_DEFVAL_PKTCTRL0   0x05        // Packet Automation Control
-#define CC1101_DEFVAL_ADDR       0xFF        // Device Address
+#define CC1101_DEFVAL_PKTCTRL1   0x04        // Packet Automation Control
+#define CC1101_DEFVAL_PKTCTRL0   0x44        // Packet Automation Control
+#define CC1101_DEFVAL_ADDR       0x00        // Device Address
 #define CC1101_DEFVAL_CHANNR     0x00        // Channel Number
 #define CC1101_DEFVAL_FSCTRL1    0x08        // Frequency Synthesizer Control
 #define CC1101_DEFVAL_FSCTRL0    0x00        // Frequency Synthesizer Control
@@ -236,7 +236,6 @@ enum RFSTATE
 #define CC1101_DEFVAL_FREQ2_918  0x23        // Frequency Control Word, High Byte
 #define CC1101_DEFVAL_FREQ1_918  0x4E        // Frequency Control Word, Middle Byte
 #define CC1101_DEFVAL_FREQ0_918  0xC4        // Frequency Control Word, Low Byte
-
 // Carrier frequency = 433 MHz
 #define CC1101_DEFVAL_FREQ2_433  0x10        // Frequency Control Word, High Byte
 #define CC1101_DEFVAL_FREQ1_433  0xA7        // Frequency Control Word, Middle Byte
@@ -245,8 +244,10 @@ enum RFSTATE
 #define CC1101_DEFVAL_MDMCFG4_4800    0xC7   // Modem configuration. Speed = 4800 bps
 #define CC1101_DEFVAL_MDMCFG4_38400    0xCA   // Modem configuration. Speed = 38 Kbps
 #define CC1101_DEFVAL_MDMCFG3    0x83        // Modem Configuration
-#define CC1101_DEFVAL_MDMCFG2    0x93        // Modem Configuration
-#define CC1101_DEFVAL_MDMCFG1    0x22        // Modem Configuration
+//#define CC1101_DEFVAL_MDMCFG2    0x93        // Modem Configuration
+#define CC1101_DEFVAL_MDMCFG2    0x13        // Modem Configuration
+//#define CC1101_DEFVAL_MDMCFG1    0x22        // Modem Configuration
+#define CC1101_DEFVAL_MDMCFG1    0xA2        // Modem Configuration
 #define CC1101_DEFVAL_MDMCFG0    0xF8        // Modem Configuration
 #define CC1101_DEFVAL_DEVIATN    0x35        // Modem Deviation Setting
 #define CC1101_DEFVAL_MCSM2      0x07        // Main Radio Control State Machine Configuration
