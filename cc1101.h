@@ -214,15 +214,16 @@ enum RFSTATE
 #define CC1101_DEFVAL_IOCFG2     0x2E        // GDO2 Output Pin Configuration
 #define CC1101_DEFVAL_IOCFG1     0x2E        // GDO1 Output Pin Configuration
 #define CC1101_DEFVAL_IOCFG0     0x06        // GDO0 Output Pin Configuration
-#define CC1101_DEFVAL_FIFOTHR    0x07        // RX FIFO and TX FIFO Thresholds
-#define CC1101_DEFVAL_SYNC1      0xB5        // Synchronization word, high byte
-#define CC1101_DEFVAL_SYNC0      0x47        // Synchronization word, low byte
+#define CC1101_DEFVAL_FIFOTHR    0x47        // RX FIFO and TX FIFO Thresholds
+#define CC1101_DEFVAL_SYNC1      0xD3        // Synchronization word, high byte
+#define CC1101_DEFVAL_SYNC0      0x91        // Synchronization word, low byte
 #define CC1101_DEFVAL_PKTLEN     0x3E        // Packet Length = 62
 #define CC1101_DEFVAL_PKTCTRL1   0x04        // Packet Automation Control
 #define CC1101_DEFVAL_PKTCTRL0   0x44        // Packet Automation Control
 #define CC1101_DEFVAL_ADDR       0x00        // Device Address
 #define CC1101_DEFVAL_CHANNR     0x00        // Channel Number
-#define CC1101_DEFVAL_FSCTRL1    0x08        // Frequency Synthesizer Control
+//#define CC1101_DEFVAL_FSCTRL1    0x08        // Frequency Synthesizer Control, example
+#define CC1101_DEFVAL_FSCTRL1    0x06        // Frequency Synthesizer Control, smartrf
 #define CC1101_DEFVAL_FSCTRL0    0x00        // Frequency Synthesizer Control
 // Carrier frequency = 868 MHz
 #define CC1101_DEFVAL_FREQ2_868  0x21        // Frequency Control Word, High Byte
@@ -241,22 +242,25 @@ enum RFSTATE
 #define CC1101_DEFVAL_FREQ1_433  0xA7        // Frequency Control Word, Middle Byte
 #define CC1101_DEFVAL_FREQ0_433  0x62        // Frequency Control Word, Low Byte
 
-#define CC1101_DEFVAL_MDMCFG4_4800    0xC7   // Modem configuration. Speed = 4800 bps
-#define CC1101_DEFVAL_MDMCFG4_38400    0xCA   // Modem configuration. Speed = 38 Kbps
+//#define CC1101_DEFVAL_MDMCFG4_4800    0xC7   // Modem configuration. Speed = 4800 bps
+#define CC1101_DEFVAL_MDMCFG4_4800  0xF5
+//#define CC1101_DEFVAL_MDMCFG4_38400    0xCA   // Modem configuration. Speed = 38 Kbps
+#define CC1101_DEFVAL_MDMCFG4_38400 0xF5 // bith the same as calculated by smartrf -> 1k2
 #define CC1101_DEFVAL_MDMCFG3    0x83        // Modem Configuration
 //#define CC1101_DEFVAL_MDMCFG2    0x93        // Modem Configuration
 #define CC1101_DEFVAL_MDMCFG2    0x13        // Modem Configuration
 //#define CC1101_DEFVAL_MDMCFG1    0x22        // Modem Configuration
 #define CC1101_DEFVAL_MDMCFG1    0xA2        // Modem Configuration
 #define CC1101_DEFVAL_MDMCFG0    0xF8        // Modem Configuration
-#define CC1101_DEFVAL_DEVIATN    0x35        // Modem Deviation Setting
+//#define CC1101_DEFVAL_DEVIATN    0x35        // Modem Deviation Setting, example
+#define CC1101_DEFVAL_DEVIATN    0x15        // Modem Deviation Setting, smartrf
 #define CC1101_DEFVAL_MCSM2      0x07        // Main Radio Control State Machine Configuration
-//#define CC1101_DEFVAL_MCSM1      0x30        // Main Radio Control State Machine Configuration
-#define CC1101_DEFVAL_MCSM1      0x20        // Main Radio Control State Machine Configuration
+#define CC1101_DEFVAL_MCSM1      0x30        // Main Radio Control State Machine Configuration
 #define CC1101_DEFVAL_MCSM0      0x18        // Main Radio Control State Machine Configuration
 #define CC1101_DEFVAL_FOCCFG     0x16        // Frequency Offset Compensation Configuration
 #define CC1101_DEFVAL_BSCFG      0x6C        // Bit Synchronization Configuration
-#define CC1101_DEFVAL_AGCCTRL2   0x43        // AGC Control
+//#define CC1101_DEFVAL_AGCCTRL2   0x43        // AGC Control, example
+#define CC1101_DEFVAL_AGCCTRL2   0x03        // AGC Control, smartrf
 #define CC1101_DEFVAL_AGCCTRL1   0x40        // AGC Control
 #define CC1101_DEFVAL_AGCCTRL0   0x91        // AGC Control
 #define CC1101_DEFVAL_WOREVT1    0x87        // High Byte Event0 Timeout

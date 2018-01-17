@@ -12,7 +12,7 @@
 #define CC1101Interrupt 0
 #define CC1101_GDO0 2
 
-#define FEND  0xC0
+#define FEND  char(0xC0)
 
 // this is an example implementation using a "PanStamp"-driver for
 // CC1101 radio.
@@ -46,7 +46,7 @@ void getRadio() {
   if (radio.receiveData(&packet) > 0) {
     if(packet.crc_ok) {
       Serial.write(FEND);
-      Serial.write(0x00);
+      Serial.write(char(0x00));
       for(uint8_t i=0; i<packet.length; i++) {
         Serial.write(packet.data[i]);
       }
@@ -105,6 +105,7 @@ void fill(CCPACKET packet, char ch) {
   for(byte i = packet.length; i < 62; i++) {
     packet.data[i] = ch;
   }
+  packet.length = 62;
 }
 
 void loop() {
@@ -114,27 +115,33 @@ void loop() {
 // heartbeating
 	if (now - pHB >= 500) {
 		static bool state = true;
-		digitalWrite(pinLedHB, state ? HIGH : LOW);
+	  digitalWrite(pinLedHB, state ? HIGH : LOW);
 		state = !state;
 		pHB = now;
 	}
 
-  if(Serial.available() >= 64) {
+  if(Serial.available() > 0) {
     CCPACKET packet;
     packet.length = 0;
-    char ch = Serial.read();
-    if (ch == FEND) {
-      ch = Serial.read();
-      if (ch == 0x00) {
+    while (Serial.available() > 0) {
+      char ch = (char)Serial.read();
+      if (ch == FEND) {
+        ch = (char)Serial.read();
+        Serial.println("rcx");
         byte bytes = Serial.readBytesUntil(FEND, packet.data, 62);
         packet.length = bytes;
         fill(packet, 0x00);
+        Serial.print("sending: ");
+        Serial.println(packet.length, DEC);
+        radio.sendData(packet);
       }
-    }      
-    radio.sendData(packet);
+    }
   }
 
   if (packetAvailable) {
     getRadio();
   }
 }
+
+// Test:
+// C0 00 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 C0
