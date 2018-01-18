@@ -465,6 +465,7 @@ bool CC1101::sendData(CCPACKET packet)
     // Set data length at the first position of the TX FIFO
 //TODO: we changed to fixed packet length. Maybe add a compile switch.
 //    writeReg(CC1101_TXFIFO, packet.length);
+    writeReg(CC1101_PKTLEN, CCPACKET_DATA_LEN);
     // Write data into the TX FIFO
     writeBurstReg(CC1101_TXFIFO, packet.data, packet.length);
 
@@ -526,7 +527,8 @@ byte CC1101::receiveData(CCPACKET * packet)
   if (rxBytes & 0x7F && !(rxBytes & 0x80))
   {
     // Read data length
-    packet->length = readConfigReg(CC1101_RXFIFO);
+//    packet->length = readConfigReg(CC1101_RXFIFO);
+    packet->length = CCPACKET_DATA_LEN;
     // If packet is too long
     if (packet->length > CCPACKET_DATA_LEN)
       packet->length = 0;   // Discard packet
