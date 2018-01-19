@@ -12,13 +12,16 @@
 #define CC1101Interrupt 0
 #define CC1101_GDO0 2
 
-#define FEND  char(0xC0)
+#define FEND  0xC0
 
 // this is an example implementation using a "PanStamp"-driver for
 // CC1101 radio.
 // PanStamp: https://github.com/panStamp/arduino_avr.git
 // Port to arduino: https://github.com/veonik/arduino-cc1101.git
+
 CC1101 radio;
+CCPACKET packet;
+
 bool packetAvailable = false;
 byte syncWord[2] = {199, 10};
 
@@ -45,16 +48,15 @@ void getRadio() {
   CCPACKET packet;
   if (radio.receiveData(&packet) > 0) {
     if(packet.crc_ok) {
-      Serial.write(FEND);
-      Serial.write(char(0x00));
+      Serial.write(byte(FEND));
+      Serial.write(byte(0x00));
       for(uint8_t i=0; i<packet.length; i++) {
         Serial.write(packet.data[i]);
       }
-      Serial.write(FEND);
+      Serial.write(byte(FEND));
       Serial.flush();
     }
   }
-  packetAvailable = false;
   attachInterrupt(CC1101_GDO0, cc1101signalsInterrupt, FALLING);
 }
 
@@ -99,6 +101,8 @@ void setup() {
 	digitalWrite(pinLedHB, HIGH);
 
   initRadio();
+
+  packet.length = 0;
 }
 
 void fill(CCPACKET packet, char ch) {
@@ -121,27 +125,25 @@ void loop() {
 	}
 
   if(Serial.available() > 0) {
-    CCPACKET packet;
-    packet.length = 0;
-    while (Serial.available() > 0) {
-      char ch = (char)Serial.read();
-      if (ch == FEND) {
-        ch = (char)Serial.read();
-        Serial.println("rcx");
-        byte bytes = Serial.readBytesUntil(FEND, packet.data, 62);
-        packet.length = bytes;
-        fill(packet, 0x00);
-        Serial.print("sending: ");
-        Serial.println(packet.length, DEC);
-        radio.sendData(packet);
-      }
+    byte ch = (byte)Serial.read();
+    if (ch == byte(0x00) && packet.length == 0) {
+      //just do nothing it's the TNC address.
+    } else if (ch != byte(FEND)) { // ignore FEND characters.
+      packet.length++;
+      packet.data[packet.length] = ch;
     }
   }
 
-  if (packetAvailable) {
+  if (packet.length == CCPACKET_DATA_LEN) {
+    radio.sendData(packet);
+    freqOffset = updateFreqOffset(radio.readReg(CC1101_FREQEST, CC1101_STATUS_REGISTER));
+    packet.length = 0;
+  } else if (packetAvailable) {
     getRadio();
+    packetAvailable = false;
   }
 }
 
 // Test:
+// C0 00 82 A0 88 A4 62 68 E0 88 8E 6A 9A AC 40 6E AE 92 88 8A 62 40 62 AE 92 88 8A 64 40 63 03 F0 3D 35 31 31 39 2E 35 20 4E 2F 30 30 39 32 36 2E 30 20 45 24 30 30 31 2E 30 30 30 4D 48 7A 20 C0 
 // C0 00 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 C0

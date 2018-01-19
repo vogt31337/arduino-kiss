@@ -49,7 +49,8 @@ struct CCPACKET
     /**
      * Data buffer
      */
-    unsigned char data[CCPACKET_DATA_LEN];
+    //unsigned char data[CCPACKET_DATA_LEN];
+    byte data[CCPACKET_DATA_LEN];
 
     /**
      * CRC OK flag
