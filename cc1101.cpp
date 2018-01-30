@@ -132,9 +132,10 @@ void CC1101::writeBurstReg(byte regAddr, byte* buffer, byte len)
   wait_Miso();                          // Wait until MISO goes low
   SPI.transfer(addr);                   // Send register address
 
-  for(i=0 ; i<len ; i++) {
-    SPI.transfer(buffer[i]);      // Send value
-  }
+  SPI.transfer(buffer, len);
+//  for(i=0 ; i<len ; i++) {
+//    SPI.transfer(buffer[i]);      // Send value
+//  }
 
   cc1101_Deselect();                    // Deselect CC1101  
 }
