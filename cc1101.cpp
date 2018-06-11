@@ -580,3 +580,25 @@ void CC1101::setTxState(void)
   rfState = RFSTATE_TX;
 }
 
+/**
+ * readRssi
+ * 
+ * Read the current rssi value for the active channel.
+ * See DN505 for a more detailed description.
+ * 
+ * According to this document rssi_offset is always 74 for CC1101
+ * 
+ * Returns rssi in dbm
+ */
+int CC1101::readRssi(void)
+{
+  uint8_t rssi_dec = readStatusReg(CC1101_RSSI);
+
+  if (rssi_dec >= 128) {
+    return (int)((int)(rssi_dec - 256) / 2) - CC1101_RSSI_OFFSET;
+  } else {
+    return (rssi_dec / 2) - CC1101_RSSI_OFFSET;
+  }
+}
+
+
