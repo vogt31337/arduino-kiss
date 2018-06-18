@@ -135,10 +135,14 @@ void loop() {
   }
 
   if (packet.length == CCPACKET_DATA_LEN) {
+    detachInterrupt(cc1101signalsInterrupt);
+    Serial.println("send packet...");
     radio.sendData(packet);
     freqOffset = updateFreqOffset(radio.readReg(CC1101_FREQEST, CC1101_STATUS_REGISTER));
     packet.length = 0;
+    attachInterrupt(CC1101_GDO0, cc1101signalsInterrupt, FALLING);
   } else if (packetAvailable) {
+    Serial.println("rcx");
     getRadio();
     packetAvailable = false;
   }
