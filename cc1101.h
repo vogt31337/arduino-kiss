@@ -52,7 +52,9 @@ enum RFSTATE
   RFSTATE_TX
 };
 
-#define CC1101_GDO0 2   // GDO0 input interrupt pin
+#ifndef CC1101_GDO0
+   #define CC1101_GDO0 2   // GDO0 input interrupt pin
+#endif
 
 /**
  * Working modes
@@ -164,6 +166,7 @@ enum RFSTATE
 #define CC1101_FREQEST           0x32        // Frequency Offset Estimate from Demodulator
 #define CC1101_LQI               0x33        // Demodulator Estimate for Link Quality
 #define CC1101_RSSI              0x34        // Received Signal Strength Indication
+#define CC1101_RSSI_OFFSET       74          // According to DN505 the offset is always 74
 #define CC1101_MARCSTATE         0x35        // Main Radio Control State Machine State
 #define CC1101_WORTIME1          0x36        // High Byte of WOR Time
 #define CC1101_WORTIME0          0x37        // Low Byte of WOR Time
@@ -411,6 +414,16 @@ class CC1101
      * Wake up CC1101 from Power Down state
      */
     void wakeUp(void);
+
+    /**
+     * readRssi
+     * 
+     * Read the current rssi value for the active channel.
+     * See DN505 for a more detailed description.
+     * 
+     * Returns rssi in dbm
+     */
+    int readRssi(void);
 
     /**
      * readReg
