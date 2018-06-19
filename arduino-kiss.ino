@@ -5,9 +5,9 @@
 // as debugging via serial is not possible (it is used for the kiss
 // protocol), I use a couple of LEDs
 #define pinLedError 3
-#define pinLedRecv 4
-#define pinLedSend 5
-#define pinLedHB 17
+#define pinLedRecv  4
+#define pinLedSend  5
+#define pinLedHB    13
 
 #define CC1101Interrupt 0
 #define CC1101_GDO0 2
