@@ -44,7 +44,7 @@ void cc1101signalsInterrupt(void){
 }
 
 void getRadio() {
-  detachInterrupt(cc1101signalsInterrupt);
+  detachInterrupt(CC1101_GDO0);
   CCPACKET packet;
   if (radio.receiveData(&packet) > 0) {
     if(packet.crc_ok) {
@@ -135,7 +135,7 @@ void loop() {
   }
 
   if (packet.length == CCPACKET_DATA_LEN) {
-    detachInterrupt(cc1101signalsInterrupt);
+    detachInterrupt(CC1101_GDO0);
     Serial.println("send packet...");
     radio.sendData(packet);
     freqOffset = updateFreqOffset(radio.readReg(CC1101_FREQEST, CC1101_STATUS_REGISTER));
