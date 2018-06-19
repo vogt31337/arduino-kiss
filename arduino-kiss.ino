@@ -1,3 +1,4 @@
+#include <avr/sleep.h>
 #include <Arduino.h>
 #include "cc1101.h" // CC1101 device
 #include "ccpacket.h"
@@ -7,7 +8,6 @@
 #define pinLedError 3
 #define pinLedRecv  4
 #define pinLedSend  5
-#define pinLedHB    13
 
 #define CC1101Interrupt 0
 #define CC1101_GDO0 2
@@ -22,7 +22,7 @@
 CC1101 radio;
 CCPACKET packet;
 
-bool packetAvailable = false;
+boolean packetAvailable = false;
 byte syncWord[2] = {199, 10};
 
 #define FILTER_LENGTH 4
@@ -36,15 +36,7 @@ byte updateFreqOffset(byte input) {
   return freq_reg >> FILTER_LENGTH;
 }
 
-/* Handle interrupt from CC1101 (INT0) gdo0 on pin2 */
-void cc1101signalsInterrupt(void){
-// set the flag that a package is available
-  packetAvailable = true;
-  freqOffset = updateFreqOffset(radio.readReg(CC1101_FREQEST, CC1101_STATUS_REGISTER));
-}
-
 void getRadio() {
-  detachInterrupt(CC1101_GDO0);
   CCPACKET packet;
   if (radio.receiveData(&packet) > 0) {
     if(packet.crc_ok) {
@@ -57,7 +49,14 @@ void getRadio() {
       Serial.flush();
     }
   }
-  attachInterrupt(CC1101_GDO0, cc1101signalsInterrupt, FALLING);
+  packetAvailable = false;
+}
+
+/* Handle interrupt from CC1101 (INT0) gdo0 on pin2 */
+void cc1101signalsInterrupt(void){
+//ISR (PCINT0_vect) {
+  packetAvailable = true;
+  freqOffset = updateFreqOffset(radio.readReg(CC1101_FREQEST, CC1101_STATUS_REGISTER));
 }
 
 bool initRadio() {
@@ -67,7 +66,6 @@ bool initRadio() {
 	digitalWrite(pinLedRecv, LOW);
 	digitalWrite(pinLedSend, LOW);
 	digitalWrite(pinLedError, LOW);
-	digitalWrite(pinLedHB, LOW);
 
   radio.setSyncWord(syncWord);
   radio.setCarrierFreq(CFREQ_433);
@@ -86,6 +84,32 @@ bool resetRadio() {
 	return initRadio();
 }
 
+void sendData() {
+//  detachInterrupt(CC1101_GDO0);
+  radio.sendData(packet);
+  freqOffset = updateFreqOffset(radio.readReg(CC1101_FREQEST, CC1101_STATUS_REGISTER));
+  packet.length = 0;
+//  attachInterrupt(CC1101_GDO0, cc1101signalsInterrupt, FALLING);
+}
+
+void serialEvent() {
+  if(Serial.available() > 0) {
+    byte ch = (byte)Serial.read();
+    if (ch == byte(0x00) && packet.length == 0) {
+      //just do nothing it's the TNC address.
+    } else if (ch != byte(FEND)) { // ignore FEND characters.
+      packet.length++;
+      packet.data[packet.length] = ch;
+    } else if (ch == byte(FEND) && packet.length > 0) {
+      sendData();
+    }
+  }
+
+  if (packet.length == CCPACKET_DATA_LEN) {
+    sendData();
+  }
+}
+
 void setup() {
 	// the arduino talks with 9600bps to the linux system
 	Serial.begin(115200);
@@ -97,12 +121,37 @@ void setup() {
 	digitalWrite(pinLedSend, HIGH);
 	pinMode(pinLedError, OUTPUT);
 	digitalWrite(pinLedError, HIGH);
-	pinMode(pinLedHB, OUTPUT);
-	digitalWrite(pinLedHB, HIGH);
 
+  // <save_power> taken from: 
+  // http://www.fiz-ix.com/2012/11/save-power-by-disabling-arduino-peripherals/
+ 
+  // Disable the ADC by setting the ADEN bit (bit 7)  of the
+  // ADCSRA register to zero.
+  ADCSRA = ADCSRA & B01111111;
+
+  // Disable the analog comparator by setting the ACD bit
+  // (bit 7) of the ACSR register to one.
+  ACSR = B10000000;
+
+  // Disable digital input buffers on all analog input pins
+  // by setting bits 0-5 of the DIDR0 register to one.
+  // Of course, only do this if you are not using the analog 
+  // inputs for your project.
+  DIDR0 = DIDR0 | B00111111;
+
+  // </save_power>
+  
   initRadio();
 
   packet.length = 0;
+}
+
+void sleepNow() {
+  set_sleep_mode(SLEEP_MODE_IDLE);
+  sleep_enable();
+  attachInterrupt(CC1101_GDO0, cc1101signalsInterrupt, FALLING);
+  sleep_mode();
+  sleep_disable();  
 }
 
 void fill(CCPACKET packet, char ch) {
@@ -113,38 +162,11 @@ void fill(CCPACKET packet, char ch) {
 }
 
 void loop() {
-	const unsigned long int now = millis();
-	static unsigned long int pHB = 0;
-
-// heartbeating
-	if (now - pHB >= 500) {
-		static bool state = true;
-	  digitalWrite(pinLedHB, state ? HIGH : LOW);
-		state = !state;
-		pHB = now;
-	}
-
-  if(Serial.available() > 0) {
-    byte ch = (byte)Serial.read();
-    if (ch == byte(0x00) && packet.length == 0) {
-      //just do nothing it's the TNC address.
-    } else if (ch != byte(FEND)) { // ignore FEND characters.
-      packet.length++;
-      packet.data[packet.length] = ch;
-    }
-  }
-
-  if (packet.length == CCPACKET_DATA_LEN) {
-    detachInterrupt(CC1101_GDO0);
-    Serial.println("send packet...");
-    radio.sendData(packet);
-    freqOffset = updateFreqOffset(radio.readReg(CC1101_FREQEST, CC1101_STATUS_REGISTER));
-    packet.length = 0;
-    attachInterrupt(CC1101_GDO0, cc1101signalsInterrupt, FALLING);
-  } else if (packetAvailable) {
-    Serial.println("rcx");
+  if (packetAvailable) {
     getRadio();
-    packetAvailable = false;
+  } else {
+    delay(100);
+    sleepNow();
   }
 }
 
