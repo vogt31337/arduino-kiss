@@ -1,3 +1,4 @@
+#include <avr/power.h>
 #include <avr/sleep.h>
 #include <Arduino.h>
 #include "cc1101.h" // CC1101 device
@@ -111,7 +112,6 @@ void serialEvent() {
 }
 
 void setup() {
-	// the arduino talks with 9600bps to the linux system
 	Serial.begin(115200);
   attachInterrupt(CC1101_GDO0, cc1101signalsInterrupt, FALLING);
   
@@ -138,6 +138,13 @@ void setup() {
   // Of course, only do this if you are not using the analog 
   // inputs for your project.
   DIDR0 = DIDR0 | B00111111;
+
+  // turn off everything
+  power_all_disable();
+
+  // and repower everything we need.
+  power_spi_enable();
+  power_usart0_enable();
 
   // </save_power>
   
